@@ -27,3 +27,17 @@ exports.handler = async (event) => {
         return { statusCode: 500, body: error.toString() };
     }
 };
+// ... existing imports and setup ...
+
+exports.handler = async (event) => {
+    try {
+        if (event.httpMethod === 'DELETE') {
+            const taskId = event.path.split('/').pop();
+            await Task.findByIdAndDelete(taskId);
+            return { statusCode: 200, body: 'Task deleted' };
+        }
+        // ... existing GET/POST handling ...
+    } catch (error) {
+        return { statusCode: 500, body: error.toString() };
+    }
+};
