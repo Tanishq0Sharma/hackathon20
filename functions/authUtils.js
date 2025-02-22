@@ -1,46 +1,50 @@
 // functions/authUtils.js
-const { promisify } = require('util');
-const jwt = require('jsonwebtoken');
-const jwksClient = require('jwks-rsa');
+const { AuthenticationClient } = require('auth0');
 
-// Configure JWKS client for Auth0
-const client = jwksClient({
-  jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`
+// Configure Auth0 client
+const auth0 = new AuthenticationClient({
+  domain: process.env.AUTH0_DOMAIN,
+  clientId: process.env.AUTH0_CLIENT_ID,
+  clientSecret: process.env.AUTH0_CLIENT_SECRET
 });
 
-// Convert callback-based functions to promises
-const getSigningKey = promisify(client.getSigningKey);
-const verifyToken = promisify(jwt.verify);
+/**
+ * Verifies the JWT token and extracts user information.
+ * @param {Object} event - The Netlify function event object.
+ * @returns {Object} - User information including `sub` (user ID) and `name`.
+ * @throws {Error} - If the token is invalid or missing.
+ */
+async function verifyToken(event) {
+  // Extract token from headers
+  const token = event.headers.authorization?.replace('Bearer ', '');
+  if (!token) {
+    throw new Error('Authorization token is missing');
+  }
 
-module.exports.verifyToken = async (event) => {
   try {
-    // Extract token from headers
-    const token = event.headers.authorization?.replace('Bearer ', '');
-    if (!token) throw new Error('Authorization token missing');
-
-    // Decode token header to get kid
-    const decodedHeader = jwt.decode(token, { complete: true })?.header;
-    if (!decodedHeader?.kid) throw new Error('Invalid token format');
-
-    // Get signing key from JWKS
-    const key = await getSigningKey(decodedHeader.kid);
-    const publicKey = key.getPublicKey();
-
-    // Verify token signature and claims
-    const decoded = await verifyToken(token, publicKey, {
-      algorithms: ['RS256'],
-      issuer: `https://${process.env.AUTH0_DOMAIN}/`,
-      audience: process.env.AUTH0_CLIENT_ID
-    });
+    // Verify the token and get user profile
+    const profile = await auth0.getProfile(token);
 
     // Return essential user information
     return {
-      sub: decoded.sub,
-      email: decoded.email,
-      name: decoded.name || decoded.nickname
+      sub: profile.sub, // Unique user ID from Auth0
+      name: profile.name || profile.nickname || 'Anonymous', // Fallback for missing names
+      email: profile.email // Optional: Include email if needed
     };
   } catch (error) {
     console.error('Token verification failed:', error.message);
-    throw new Error('Invalid or expired token');
+
+    // Handle specific Auth0 errors
+    if (error.message.includes('Invalid token')) {
+      throw new Error('Invalid or expired token');
+    }
+    if (error.message.includes('Unauthorized')) {
+      throw new Error('Unauthorized access');
+    }
+
+    // Generic error for other cases
+    throw new Error('Failed to verify token');
   }
-};
+}
+
+module.exports = { verifyToken };
