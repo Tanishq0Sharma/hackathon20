@@ -1,0 +1,12 @@
+{
+  "name": "hacktcnj025",
+  "version": "1.0.0",
+  "description": "TaskSync & SecureNotes App",
+  "scripts": {
+    "build": "echo 'Build complete'"
+  },
+  "dependencies": {
+    "mongoose": "^6.0.0",
+    "axios": "^0.21.1"
+  }
+}
