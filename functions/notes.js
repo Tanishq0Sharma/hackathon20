@@ -6,21 +6,22 @@ mongoose.connect(process.env.MONGODB_URI, {
     useUnifiedTopology: true
 });
 
-const Note = mongoose.model('Note', new mongoose.Schema({
-    note: String,
-    userId: { type: String, required: true, index: true },
+// Note Schema
+const noteSchema = new mongoose.Schema({
+    note: { type: String, required: true },
+    user: { type: String, required: true },
+    auth0Id: { type: String, required: true },
     createdAt: { type: Date, default: Date.now }
-}));
+});
+const Note = mongoose.model('Note', noteSchema);
 
 exports.handler = async (event) => {
     try {
-        const { sub: userId } = await verifyToken(event);
+        const { sub: auth0Id, name } = await verifyToken(event);
 
         switch (event.httpMethod) {
             case 'GET':
-                const notes = await Note.find({ userId })
-                    .sort({ createdAt: -1 })
-                    .lean();
+                const notes = await Note.find({ auth0Id }).lean();
                 return {
                     statusCode: 200,
                     body: JSON.stringify(notes),
@@ -36,7 +37,7 @@ exports.handler = async (event) => {
                         headers: { 'Content-Type': 'application/json' }
                     };
                 }
-                const newNote = new Note({ note, userId });
+                const newNote = new Note({ note, user: name, auth0Id });
                 const savedNote = await newNote.save();
                 return {
                     statusCode: 201,
@@ -48,7 +49,7 @@ exports.handler = async (event) => {
                 const noteId = event.path.split('/').pop();
                 const note = await Note.findOneAndDelete({ 
                     _id: noteId, 
-                    userId 
+                    auth0Id 
                 });
                 if (!note) {
                     return {
@@ -72,13 +73,6 @@ exports.handler = async (event) => {
         }
     } catch (error) {
         console.error('Error:', error);
-        if (error.message.includes('Unauthorized')) {
-            return {
-                statusCode: 401,
-                body: JSON.stringify({ error: 'Unauthorized' }),
-                headers: { 'Content-Type': 'application/json' }
-            };
-        }
         return {
             statusCode: 500,
             body: JSON.stringify({ error: 'Server error' }),
