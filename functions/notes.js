@@ -6,19 +6,21 @@ mongoose.connect(process.env.MONGODB_URI, {
     useUnifiedTopology: true
 });
 
-const Note = mongoose.model('Note', {
+const Note = mongoose.model('Note', new mongoose.Schema({
     note: String,
-    userId: String // Store user ID
-});
+    userId: { type: String, required: true, index: true },
+    createdAt: { type: Date, default: Date.now }
+}));
 
 exports.handler = async (event) => {
     try {
-        // Verify JWT and get user ID
         const { sub: userId } = await verifyToken(event);
 
         switch (event.httpMethod) {
             case 'GET':
-                const notes = await Note.find({ userId }).lean();
+                const notes = await Note.find({ userId })
+                    .sort({ createdAt: -1 })
+                    .lean();
                 return {
                     statusCode: 200,
                     body: JSON.stringify(notes),
@@ -27,6 +29,13 @@ exports.handler = async (event) => {
 
             case 'POST':
                 const { note } = JSON.parse(event.body);
+                if (!note?.trim()) {
+                    return {
+                        statusCode: 400,
+                        body: JSON.stringify({ error: 'Note content required' }),
+                        headers: { 'Content-Type': 'application/json' }
+                    };
+                }
                 const newNote = new Note({ note, userId });
                 const savedNote = await newNote.save();
                 return {
@@ -37,15 +46,17 @@ exports.handler = async (event) => {
 
             case 'DELETE':
                 const noteId = event.path.split('/').pop();
-                const note = await Note.findOne({ _id: noteId, userId });
+                const note = await Note.findOneAndDelete({ 
+                    _id: noteId, 
+                    userId 
+                });
                 if (!note) {
                     return {
                         statusCode: 404,
-                        body: JSON.stringify({ message: 'Note not found' }),
+                        body: JSON.stringify({ error: 'Note not found' }),
                         headers: { 'Content-Type': 'application/json' }
                     };
                 }
-                await Note.findByIdAndDelete(noteId);
                 return {
                     statusCode: 200,
                     body: JSON.stringify({ message: 'Note deleted' }),
@@ -55,24 +66,22 @@ exports.handler = async (event) => {
             default:
                 return {
                     statusCode: 405,
-                    body: JSON.stringify({ message: 'Method Not Allowed' }),
+                    body: JSON.stringify({ error: 'Method not allowed' }),
                     headers: { 'Content-Type': 'application/json' }
                 };
         }
     } catch (error) {
-        if (error.name === 'UnauthorizedError') {
+        console.error('Error:', error);
+        if (error.message.includes('Unauthorized')) {
             return {
                 statusCode: 401,
-                body: JSON.stringify({ message: 'Unauthorized' }),
+                body: JSON.stringify({ error: 'Unauthorized' }),
                 headers: { 'Content-Type': 'application/json' }
             };
         }
         return {
             statusCode: 500,
-            body: JSON.stringify({
-                message: 'Server Error',
-                error: error.message
-            }),
+            body: JSON.stringify({ error: 'Server error' }),
             headers: { 'Content-Type': 'application/json' }
         };
     }
