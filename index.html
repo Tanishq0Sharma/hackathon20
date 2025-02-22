@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TaskSync & SecureNotes Pro</title>
+    <title>Secure Task & Notes Manager</title>
     <script src="https://cdn.auth0.com/js/auth0/9.18/auth0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <style>
+    <style>
         :root {
             --primary: #6366f1;
             --secondary: #4f46e5;
@@ -221,7 +221,6 @@
     </div>
 
     <script>
-        // Auth0 Configuration
         const auth0Client = new auth0.WebAuth({
             domain: "tanishqs.us.auth0.com",
             clientID: "EqkpRMJsZ7i4keAY7OOA0atzKJ0pivqx",
@@ -230,35 +229,14 @@
             scope: "openid profile email"
         });
 
-        // Utility Functions
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = `toast ${type} visible`;
-            setTimeout(() => toast.classList.remove('visible'), 3000);
-        }
-
-        async function withLoading(fn) {
-            const loader = document.getElementById('loading');
-            try {
-                loader.classList.remove('hidden');
-                return await fn();
-            } catch (error) {
-                showToast(error.message || 'Operation failed', 'error');
-                throw error;
-            } finally {
-                loader.classList.add('hidden');
-            }
-        }
-
-        // Authentication Handlers
+        // Authentication
         document.getElementById('login').onclick = () => auth0Client.authorize();
         document.getElementById('logout').onclick = () => {
             localStorage.removeItem('id_token');
             auth0Client.logout({ returnTo: window.location.origin });
         };
 
-        // Initial Load
+        // Initial load
         window.onload = function() {
             const token = localStorage.getItem('id_token');
             if (token) {
@@ -288,122 +266,121 @@
             fetchNotes();
         }
 
-        // Task Functions
+        // Task functions
         async function addTask() {
-            await withLoading(async () => {
-                const taskInput = document.getElementById('taskInput');
-                if (!taskInput.value.trim()) return;
+            const token = localStorage.getItem('id_token');
+            const taskInput = document.getElementById('taskInput');
+            if (!taskInput.value.trim()) return;
 
-                const token = localStorage.getItem('id_token');
-                const response = await axios.post('/.netlify/functions/tasks', {
-                    task: taskInput.value
-                }, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-
-                if (response.status === 201) {
-                    taskInput.value = '';
-                    await Promise.all([fetchTasks(), fetchNotes()]);
-                    showToast('Task added successfully!');
-                }
-            });
+            try {
+                await axios.post('/.netlify/functions/tasks', 
+                    { task: taskInput.value },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                taskInput.value = '';
+                await fetchTasks();
+            } catch (error) {
+                showToast(error.response?.data?.error || 'Failed to add task', 'error');
+            }
         }
 
         async function fetchTasks() {
+            const token = localStorage.getItem('id_token');
             try {
-                const token = localStorage.getItem('id_token');
                 const response = await axios.get('/.netlify/functions/tasks', {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-
-                const taskList = document.getElementById('taskList');
-                taskList.innerHTML = '';
-                response.data.forEach(task => {
-                    const taskItem = document.createElement('div');
-                    taskItem.className = 'task-item';
-                    taskItem.innerHTML = `
-                        <span>${task.task}</span>
-                        <button class="delete-btn" onclick="deleteTask('${task._id}')">×</button>
-                    `;
-                    taskList.appendChild(taskItem);
-                });
+                renderTasks(response.data);
             } catch (error) {
-                console.error('Error fetching tasks:', error);
                 if (error.response?.status === 401) logout();
             }
+        }
+
+        function renderTasks(tasks) {
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = tasks.map(task => `
+                <div class="task-item">
+                    <span>${task.task}</span>
+                    <button class="delete-btn" onclick="deleteTask('${task._id}')">×</button>
+                </div>
+            `).join('');
         }
 
         async function deleteTask(taskId) {
-            await withLoading(async () => {
-                const token = localStorage.getItem('id_token');
-                const response = await axios.delete(`/.netlify/functions/tasks/${taskId}`, {
+            const token = localStorage.getItem('id_token');
+            try {
+                await axios.delete(`/.netlify/functions/tasks/${taskId}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-
-                if (response.status === 200) {
-                    await Promise.all([fetchTasks(), fetchNotes()]);
-                    showToast('Task deleted successfully!');
-                }
-            });
+                await fetchTasks();
+            } catch (error) {
+                showToast('Failed to delete task', 'error');
+            }
         }
 
-        // Note Functions
+        // Note functions
         async function saveNote() {
-            await withLoading(async () => {
-                const noteInput = document.getElementById('noteInput');
-                if (!noteInput.value.trim()) return;
+            const token = localStorage.getItem('id_token');
+            const noteInput = document.getElementById('noteInput');
+            if (!noteInput.value.trim()) return;
 
-                const token = localStorage.getItem('id_token');
-                const response = await axios.post('/.netlify/functions/notes', {
-                    note: noteInput.value
-                }, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-
-                if (response.status === 201) {
-                    noteInput.value = '';
-                    await Promise.all([fetchTasks(), fetchNotes()]);
-                    showToast('Note saved successfully!');
-                }
-            });
+            try {
+                await axios.post('/.netlify/functions/notes', 
+                    { note: noteInput.value },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                noteInput.value = '';
+                await fetchNotes();
+            } catch (error) {
+                showToast(error.response?.data?.error || 'Failed to save note', 'error');
+            }
         }
 
         async function fetchNotes() {
+            const token = localStorage.getItem('id_token');
             try {
-                const token = localStorage.getItem('id_token');
                 const response = await axios.get('/.netlify/functions/notes', {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-
-                const noteDisplay = document.getElementById('noteDisplay');
-                noteDisplay.innerHTML = '';
-                response.data.forEach(note => {
-                    const noteItem = document.createElement('div');
-                    noteItem.className = 'note-item';
-                    noteItem.innerHTML = `
-                        <div>${note.note}</div>
-                        <button class="delete-btn" onclick="deleteNote('${note._id}')">×</button>
-                    `;
-                    noteDisplay.appendChild(noteItem);
-                });
+                renderNotes(response.data);
             } catch (error) {
-                console.error('Error fetching notes:', error);
                 if (error.response?.status === 401) logout();
             }
         }
 
+        function renderNotes(notes) {
+            const noteDisplay = document.getElementById('noteDisplay');
+            noteDisplay.innerHTML = notes.map(note => `
+                <div class="note-item">
+                    <div>${note.note}</div>
+                    <button class="delete-btn" onclick="deleteNote('${note._id}')">×</button>
+                </div>
+            `).join('');
+        }
+
         async function deleteNote(noteId) {
-            await withLoading(async () => {
-                const token = localStorage.getItem('id_token');
-                const response = await axios.delete(`/.netlify/functions/notes/${noteId}`, {
+            const token = localStorage.getItem('id_token');
+            try {
+                await axios.delete(`/.netlify/functions/notes/${noteId}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
+                await fetchNotes();
+            } catch (error) {
+                showToast('Failed to delete note', 'error');
+            }
+        }
 
-                if (response.status === 200) {
-                    await Promise.all([fetchTasks(), fetchNotes()]);
-                    showToast('Note deleted successfully!');
-                }
-            });
+        // Utilities
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} visible`;
+            setTimeout(() => toast.classList.remove('visible'), 3000);
+        }
+
+        function logout() {
+            localStorage.removeItem('id_token');
+            window.location.reload();
         }
     </script>
 </body>
