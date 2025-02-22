@@ -7,16 +7,81 @@
     <script src="https://cdn.auth0.com/js/auth0/9.18/auth0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
     <style>
-        /* Keep the same CSS styles from your original */
-        body { font-family: 'Arial', sans-serif; background: linear-gradient(to right, #6a11cb, #2575fc); margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .container { width: 90%; max-width: 500px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2); text-align: center; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to right, #6a11cb, #2575fc);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            width: 90%;
+            max-width: 500px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
         .hidden { display: none; }
-        input, textarea, button { width: 100%; margin: 10px 0; padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; }
-        button { background: #2575fc; color: white; border: none; cursor: pointer; transition: 0.3s; }
+        input, textarea, button {
+            width: 100%;
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+        button {
+            background: #2575fc;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: 0.3s;
+            border-radius: 8px;
+            font-size: 16px;
+        }
         button:hover { background: #1a5bd1; }
+        button.delete {
+            background: #ff4c4c;
+        }
+        button.delete:hover { background: #ff1a1a; }
         h2, h3 { color: #333; }
         ul { list-style: none; padding: 0; }
-        li { background: #f8f8f8; padding: 10px; margin: 5px 0; border-radius: 8px; }
+        li {
+            background: #f8f8f8;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        li span { flex-grow: 1; }
+        .task-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .task-buttons button {
+            padding: 8px;
+            font-size: 14px;
+        }
+        .task-list, .note-list {
+            margin-top: 20px;
+        }
+        textarea {
+            height: 120px;
+        }
+        .note-display {
+            margin-top: 10px;
+            padding: 15px;
+            background: #f1f1f1;
+            border-radius: 8px;
+            text-align: left;
+        }
     </style>
 </head>
 <body>
@@ -29,12 +94,12 @@
             <h3>Task List</h3>
             <input type="text" id="taskInput" placeholder="Enter a new task">
             <button onclick="addTask()">Add Task</button>
-            <ul id="taskList"></ul>
+            <ul id="taskList" class="task-list"></ul>
             
             <h3>Secure Notes</h3>
             <textarea id="noteInput" placeholder="Write your secure note..."></textarea>
             <button onclick="saveNote()">Save Note</button>
-            <div id="noteDisplay"></div>
+            <div id="noteDisplay" class="note-display"></div>
         </div>
     </div>
 
@@ -107,11 +172,22 @@
                 list.innerHTML = "";
                 response.data.forEach(task => {
                     const li = document.createElement("li");
-                    li.textContent = task.task;
+                    li.innerHTML = `<span>${task.task}</span><div class="task-buttons">
+                                        <button onclick="deleteTask('${task._id}')">Delete</button>
+                                      </div>`;
                     list.appendChild(li);
                 });
             } catch (error) {
                 console.error("Fetch tasks error:", error);
+            }
+        }
+
+        async function deleteTask(taskId) {
+            try {
+                await axios.delete(`/.netlify/functions/tasks/${taskId}`);
+                fetchTasks();
+            } catch (error) {
+                console.error("Delete task error:", error);
             }
         }
 
@@ -130,9 +206,25 @@
         async function fetchNotes() {
             try {
                 const response = await axios.get("/.netlify/functions/notes");
-                document.getElementById("noteDisplay").innerText = response.data[0]?.note || "No notes saved.";
+                const noteDisplay = document.getElementById("noteDisplay");
+                if (response.data.length > 0) {
+                    noteDisplay.innerHTML = `
+                        <span>${response.data[0].note}</span>
+                        <button class="delete" onclick="deleteNote()">Delete Note</button>`;
+                } else {
+                    noteDisplay.innerHTML = "No notes saved.";
+                }
             } catch (error) {
                 console.error("Fetch notes error:", error);
+            }
+        }
+
+        async function deleteNote() {
+            try {
+                await axios.delete("/.netlify/functions/notes");
+                fetchNotes();
+            } catch (error) {
+                console.error("Delete note error:", error);
             }
         }
     </script>
