@@ -27,3 +27,19 @@ exports.handler = async (event) => {
         return { statusCode: 500, body: error.toString() };
     }
 };
+
+
+// ... existing imports and setup ...
+
+exports.handler = async (event) => {
+    try {
+        if (event.httpMethod === 'DELETE') {
+            const noteId = event.path.split('/').pop();
+            await Note.findByIdAndDelete(noteId);
+            return { statusCode: 200, body: 'Note deleted' };
+        }
+        // ... existing GET/POST handling ...
+    } catch (error) {
+        return { statusCode: 500, body: error.toString() };
+    }
+};
