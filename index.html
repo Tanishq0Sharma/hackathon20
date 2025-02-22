@@ -7,7 +7,7 @@
     <script src="https://cdn.auth0.com/js/auth0/9.18/auth0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <style>
+  <style>
         :root {
             --primary: #6366f1;
             --secondary: #4f46e5;
@@ -221,7 +221,7 @@
     </div>
 
     <script>
-        // Auth Configuration
+        // Auth0 Configuration
         const auth0Client = new auth0.WebAuth({
             domain: "tanishqs.us.auth0.com",
             clientID: "EqkpRMJsZ7i4keAY7OOA0atzKJ0pivqx",
@@ -294,8 +294,11 @@
                 const taskInput = document.getElementById('taskInput');
                 if (!taskInput.value.trim()) return;
 
+                const token = localStorage.getItem('id_token');
                 const response = await axios.post('/.netlify/functions/tasks', {
                     task: taskInput.value
+                }, {
+                    headers: { Authorization: `Bearer ${token}` }
                 });
 
                 if (response.status === 201) {
@@ -308,10 +311,13 @@
 
         async function fetchTasks() {
             try {
-                const response = await axios.get('/.netlify/functions/tasks');
+                const token = localStorage.getItem('id_token');
+                const response = await axios.get('/.netlify/functions/tasks', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
                 const taskList = document.getElementById('taskList');
                 taskList.innerHTML = '';
-                
                 response.data.forEach(task => {
                     const taskItem = document.createElement('div');
                     taskItem.className = 'task-item';
@@ -323,12 +329,17 @@
                 });
             } catch (error) {
                 console.error('Error fetching tasks:', error);
+                if (error.response?.status === 401) logout();
             }
         }
 
         async function deleteTask(taskId) {
             await withLoading(async () => {
-                const response = await axios.delete(`/.netlify/functions/tasks/${taskId}`);
+                const token = localStorage.getItem('id_token');
+                const response = await axios.delete(`/.netlify/functions/tasks/${taskId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
                 if (response.status === 200) {
                     await Promise.all([fetchTasks(), fetchNotes()]);
                     showToast('Task deleted successfully!');
@@ -342,8 +353,11 @@
                 const noteInput = document.getElementById('noteInput');
                 if (!noteInput.value.trim()) return;
 
+                const token = localStorage.getItem('id_token');
                 const response = await axios.post('/.netlify/functions/notes', {
                     note: noteInput.value
+                }, {
+                    headers: { Authorization: `Bearer ${token}` }
                 });
 
                 if (response.status === 201) {
@@ -356,10 +370,13 @@
 
         async function fetchNotes() {
             try {
-                const response = await axios.get('/.netlify/functions/notes');
+                const token = localStorage.getItem('id_token');
+                const response = await axios.get('/.netlify/functions/notes', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
                 const noteDisplay = document.getElementById('noteDisplay');
                 noteDisplay.innerHTML = '';
-                
                 response.data.forEach(note => {
                     const noteItem = document.createElement('div');
                     noteItem.className = 'note-item';
@@ -371,12 +388,17 @@
                 });
             } catch (error) {
                 console.error('Error fetching notes:', error);
+                if (error.response?.status === 401) logout();
             }
         }
 
         async function deleteNote(noteId) {
             await withLoading(async () => {
-                const response = await axios.delete(`/.netlify/functions/notes/${noteId}`);
+                const token = localStorage.getItem('id_token');
+                const response = await axios.delete(`/.netlify/functions/notes/${noteId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
                 if (response.status === 200) {
                     await Promise.all([fetchTasks(), fetchNotes()]);
                     showToast('Note deleted successfully!');
