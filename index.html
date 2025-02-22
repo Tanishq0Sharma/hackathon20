@@ -3,107 +3,197 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TaskSync & SecureNotes</title>
+    <title>TaskSync & SecureNotes Pro</title>
     <script src="https://cdn.auth0.com/js/auth0/9.18/auth0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(to right, #6a11cb, #2575fc);
+        :root {
+            --primary: #6366f1;
+            --secondary: #4f46e5;
+            --accent: #a5b4fc;
+            --background: #f8fafc;
+            --text: #1e293b;
+        }
+
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
         }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            color: var(--text);
+        }
+
         .container {
-            width: 90%;
-            max-width: 500px;
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
-            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            margin: 0 auto;
         }
-        .hidden { display: none; }
-        input, textarea, button {
-            width: 100%;
-            margin: 10px 0;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-            font-size: 16px;
+
+        .auth-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-bottom: 2rem;
         }
+
         button {
-            background: #2575fc;
+            background: var(--primary);
             color: white;
             border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
             cursor: pointer;
-            transition: 0.3s;
-            border-radius: 8px;
-            font-size: 16px;
+            transition: all 0.3s ease;
+            font-weight: 500;
         }
-        button:hover { background: #1a5bd1; }
-        button.delete {
-            background: #ff4c4c;
+
+        button:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
-        button.delete:hover { background: #ff1a1a; }
-        h2, h3 { color: #333; }
-        ul { list-style: none; padding: 0; }
-        li {
-            background: #f8f8f8;
-            padding: 10px;
-            margin: 5px 0;
+
+        .app-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        h2 {
+            color: var(--secondary);
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #e2e8f0;
             border-radius: 8px;
+            margin-bottom: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .task-list {
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .task-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-        li span { flex-grow: 1; }
-        .task-buttons {
-            display: flex;
-            gap: 10px;
-        }
-        .task-buttons button {
-            padding: 8px;
-            font-size: 14px;
-        }
-        .task-list, .note-list {
-            margin-top: 20px;
-        }
-        textarea {
-            height: 120px;
-        }
-        .note-display {
-            margin-top: 10px;
-            padding: 15px;
-            background: #f1f1f1;
+            padding: 0.8rem;
+            background: var(--background);
             border-radius: 8px;
-            text-align: left;
+            margin-bottom: 0.5rem;
+            animation: slideIn 0.3s ease;
         }
+
+        .note-display {
+            max-height: 300px;
+            overflow-y: auto;
+            background: var(--background);
+            padding: 1rem;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+
+        .delete-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.3rem 0.6rem;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .delete-btn:hover {
+            background: #dc2626;
+            transform: scale(1.1);
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .hidden { display: none; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>TaskSync & SecureNotes</h2>
-        <button id="login">Login</button>
-        <button id="logout" class="hidden">Logout</button>
+        <div class="auth-buttons">
+            <button id="login">Login</button>
+            <button id="logout" class="hidden">Logout</button>
+        </div>
         
         <div id="app" class="hidden">
-            <h3>Task List</h3>
-            <input type="text" id="taskInput" placeholder="Enter a new task">
-            <button onclick="addTask()">Add Task</button>
-            <ul id="taskList" class="task-list"></ul>
-            
-            <h3>Secure Notes</h3>
-            <textarea id="noteInput" placeholder="Write your secure note..."></textarea>
-            <button onclick="saveNote()">Save Note</button>
-            <div id="noteDisplay" class="note-display"></div>
+            <div class="app-content">
+                <div class="section">
+                    <h2>📝 Task List</h2>
+                    <input type="text" id="taskInput" placeholder="Add a new task...">
+                    <button onclick="addTask()">Add Task</button>
+                    <div class="task-list" id="taskList"></div>
+                </div>
+                
+                <div class="section">
+                    <h2>🔒 Secure Notes</h2>
+                    <textarea id="noteInput" placeholder="Write your secure note..." rows="4"></textarea>
+                    <button onclick="saveNote()">Save Note</button>
+                    <div class="note-display" id="noteDisplay"></div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
+        // Auth Configuration
         const auth0Client = new auth0.WebAuth({
             domain: "tanishqs.us.auth0.com",
             clientID: "EqkpRMJsZ7i4keAY7OOA0atzKJ0pivqx",
@@ -112,16 +202,14 @@
             scope: "openid profile email"
         });
 
-        // Authentication handlers
+        // Authentication Handlers
         document.getElementById("login").onclick = () => auth0Client.authorize();
         document.getElementById("logout").onclick = () => {
             localStorage.removeItem("id_token");
-            auth0Client.logout({
-                returnTo: "https://hacktcnj025.netlify.app"
-            });
+            auth0Client.logout({ returnTo: window.location.origin });
         };
 
-        // Initial load handler
+        // Initial Load
         window.onload = function() {
             const token = localStorage.getItem("id_token");
             if (token) {
@@ -133,7 +221,7 @@
 
         function handleAuthCallback() {
             auth0Client.parseHash((err, authResult) => {
-                if (authResult && authResult.idToken) {
+                if (authResult?.idToken) {
                     localStorage.setItem("id_token", authResult.idToken);
                     window.location.href = "/";
                 } else if (err) {
@@ -151,16 +239,16 @@
             fetchNotes();
         }
 
-        // API functions
+        // Task Functions
         async function addTask() {
-            const task = document.getElementById("taskInput").value;
-            if (task) {
+            const taskInput = document.getElementById("taskInput");
+            if (taskInput.value.trim()) {
                 try {
-                    await axios.post("/.netlify/functions/tasks", { task });
-                    fetchTasks();
-                    document.getElementById("taskInput").value = "";
+                    await axios.post("/.netlify/functions/tasks", { task: taskInput.value });
+                    taskInput.value = "";
+                    await fetchTasks();
                 } catch (error) {
-                    console.error("Task error:", error);
+                    console.error("Error adding task:", error);
                 }
             }
         }
@@ -168,37 +256,42 @@
         async function fetchTasks() {
             try {
                 const response = await axios.get("/.netlify/functions/tasks");
-                const list = document.getElementById("taskList");
-                list.innerHTML = "";
+                const taskList = document.getElementById("taskList");
+                taskList.innerHTML = "";
+                
                 response.data.forEach(task => {
-                    const li = document.createElement("li");
-                    li.innerHTML = `<span>${task.task}</span><div class="task-buttons">
-                                        <button onclick="deleteTask('${task._id}')">Delete</button>
-                                      </div>`;
-                    list.appendChild(li);
+                    const taskItem = document.createElement("div");
+                    taskItem.className = "task-item";
+                    taskItem.innerHTML = `
+                        <span>${task.task}</span>
+                        <button class="delete-btn" onclick="deleteTask('${task._id}')">×</button>
+                    `;
+                    taskList.appendChild(taskItem);
                 });
             } catch (error) {
-                console.error("Fetch tasks error:", error);
+                console.error("Error fetching tasks:", error);
             }
         }
 
         async function deleteTask(taskId) {
             try {
                 await axios.delete(`/.netlify/functions/tasks/${taskId}`);
-                fetchTasks();
+                await fetchTasks();
             } catch (error) {
-                console.error("Delete task error:", error);
+                console.error("Error deleting task:", error);
             }
         }
 
+        // Note Functions
         async function saveNote() {
-            const note = document.getElementById("noteInput").value;
-            if (note) {
+            const noteInput = document.getElementById("noteInput");
+            if (noteInput.value.trim()) {
                 try {
-                    await axios.post("/.netlify/functions/notes", { note });
-                    fetchNotes();
+                    await axios.post("/.netlify/functions/notes", { note: noteInput.value });
+                    noteInput.value = "";
+                    await fetchNotes();
                 } catch (error) {
-                    console.error("Note error:", error);
+                    console.error("Error saving note:", error);
                 }
             }
         }
@@ -207,24 +300,28 @@
             try {
                 const response = await axios.get("/.netlify/functions/notes");
                 const noteDisplay = document.getElementById("noteDisplay");
-                if (response.data.length > 0) {
-                    noteDisplay.innerHTML = `
-                        <span>${response.data[0].note}</span>
-                        <button class="delete" onclick="deleteNote()">Delete Note</button>`;
-                } else {
-                    noteDisplay.innerHTML = "No notes saved.";
-                }
+                noteDisplay.innerHTML = "";
+                
+                response.data.forEach(note => {
+                    const noteItem = document.createElement("div");
+                    noteItem.className = "task-item";
+                    noteItem.innerHTML = `
+                        <div>${note.note}</div>
+                        <button class="delete-btn" onclick="deleteNote('${note._id}')">×</button>
+                    `;
+                    noteDisplay.appendChild(noteItem);
+                });
             } catch (error) {
-                console.error("Fetch notes error:", error);
+                console.error("Error fetching notes:", error);
             }
         }
 
-        async function deleteNote() {
+        async function deleteNote(noteId) {
             try {
-                await axios.delete("/.netlify/functions/notes");
-                fetchNotes();
+                await axios.delete(`/.netlify/functions/notes/${noteId}`);
+                await fetchNotes();
             } catch (error) {
-                console.error("Delete note error:", error);
+                console.error("Error deleting note:", error);
             }
         }
     </script>
