@@ -1,4 +1,3 @@
-<!-- callback.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,9 +9,9 @@
 <body>
     <script>
         const auth0Client = new auth0.WebAuth({
-            domain: "YOUR_AUTH0_DOMAIN",
-            clientID: "YOUR_AUTH0_CLIENT_ID",
-            redirectUri: window.location.origin + "/callback.html",
+            domain: "tanishqs.us.auth0.com",
+            clientID: "EqkpRMJsZ7i4keAY7OOA0atzKJ0pivqx",
+            redirectUri: "https://hacktcnj025.netlify.app/callback.html",
             responseType: "token id_token",
             scope: "openid profile email"
         });
@@ -22,7 +21,8 @@
                 localStorage.setItem("id_token", authResult.idToken);
                 window.location.href = "/";
             } else {
-                console.error("Error during authentication", err);
+                console.error("Authentication error:", err);
+                window.location.href = "/";
             }
         });
     </script>
