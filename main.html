@@ -1,0 +1,155 @@
+<!-- main.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskSync & SecureNotes</title>
+    <script src="https://cdn.auth0.com/js/auth0/9.18/auth0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to right, #6a11cb, #2575fc);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            width: 90%;
+            max-width: 500px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        .hidden { display: none; }
+        input, textarea, button {
+            width: 100%;
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+        button {
+            background: #2575fc;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover { background: #1a5bd1; }
+        h2, h3 { color: #333; }
+        ul { list-style: none; padding: 0; }
+        li {
+            background: #f8f8f8;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>TaskSync & SecureNotes</h2>
+        <button id="login">Login</button>
+        <button id="logout" class="hidden">Logout</button>
+        
+        <div id="app" class="hidden">
+            <h3>Task List</h3>
+            <input type="text" id="taskInput" placeholder="Enter a new task">
+            <button onclick="addTask()">Add Task</button>
+            <ul id="taskList"></ul>
+            
+            <h3>Secure Notes</h3>
+            <textarea id="noteInput" placeholder="Write your secure note..."></textarea>
+            <button onclick="saveNote()">Save Note</button>
+            <div id="noteDisplay"></div>
+        </div>
+    </div>
+    
+    <script>
+        const auth0Client = new auth0.WebAuth({
+            domain: "tanishqs.us.auth0.com",
+            clientID: "EqkpRMJsZ7i4keAY7OOA0atzKJ0pivqx",
+            redirectUri: window.location.origin + "/callback.html",
+            responseType: "token id_token",
+            scope: "openid profile email"
+        });
+
+        document.getElementById("login").onclick = () => auth0Client.authorize();
+        document.getElementById("logout").onclick = () => logout();
+
+        function logout() {
+            localStorage.removeItem("id_token");
+            auth0Client.logout({ returnTo: window.location.origin });
+        }
+
+        window.onload = function () {
+            const token = localStorage.getItem("id_token");
+            if (token) {
+                document.getElementById("login").classList.add("hidden");
+                document.getElementById("logout").classList.remove("hidden");
+                document.getElementById("app").classList.remove("hidden");
+                fetchTasks();
+                fetchNotes();
+            } else if (window.location.hash) {
+                handleAuthCallback();
+            }
+        };
+
+        function handleAuthCallback() {
+            auth0Client.parseHash((err, authResult) => {
+                if (authResult && authResult.idToken) {
+                    localStorage.setItem("id_token", authResult.idToken);
+                    window.location.href = "/";  // redirect to main page after login
+                } else {
+                    console.error("Error during authentication", err);
+                }
+            });
+        }
+
+        function addTask() {
+            const task = document.getElementById("taskInput").value;
+            if (task) {
+                axios.post("http://localhost:5000/tasks", { task })
+                    .then(fetchTasks);
+                document.getElementById("taskInput").value = "";
+            }
+        }
+
+        function fetchTasks() {
+            axios.get("http://localhost:5000/tasks")
+                .then(response => {
+                    const list = document.getElementById("taskList");
+                    list.innerHTML = "";
+                    response.data.forEach(task => {
+                        const li = document.createElement("li");
+                        li.textContent = task.task;
+                        list.appendChild(li);
+                    });
+                });
+        }
+
+        function saveNote() {
+            const note = document.getElementById("noteInput").value;
+            if (note) {
+                axios.post("http://localhost:5000/notes", { note })
+                    .then(fetchNotes);
+            }
+        }
+
+        function fetchNotes() {
+            axios.get("http://localhost:5000/notes")
+                .then(response => {
+                    document.getElementById("noteDisplay").innerText = response.data[0]?.note || "No notes saved.";
+                });
+        }
+    </script>
+</body>
+</html>

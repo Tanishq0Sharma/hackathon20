@@ -1,0 +1,30 @@
+<!-- callback.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authenticating...</title>
+    <script src="https://cdn.auth0.com/js/auth0/9.18/auth0.min.js"></script>
+</head>
+<body>
+    <script>
+        const auth0Client = new auth0.WebAuth({
+            domain: "YOUR_AUTH0_DOMAIN",
+            clientID: "YOUR_AUTH0_CLIENT_ID",
+            redirectUri: window.location.origin + "/callback.html",
+            responseType: "token id_token",
+            scope: "openid profile email"
+        });
+
+        auth0Client.parseHash((err, authResult) => {
+            if (authResult && authResult.idToken) {
+                localStorage.setItem("id_token", authResult.idToken);
+                window.location.href = "/";
+            } else {
+                console.error("Error during authentication", err);
+            }
+        });
+    </script>
+</body>
+</html>
