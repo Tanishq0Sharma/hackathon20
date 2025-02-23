@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
+const jwksClient = require('jwks-rsa');
 
 // Connect to MongoDB using environment variable
 mongoose.connect(process.env.MONGODB_URI, {
@@ -23,34 +25,50 @@ const Note = mongoose.model('Note', {
     }
 });
 
-// Define the Auth0User schema to store Auth0 user and token
-const Auth0User = mongoose.model('Auth0User', {
-    userId: {
-        type: String,
-        required: true
-    },
-    token: {
-        type: String,
-        required: true
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
-    }
+// Auth0 JWT validation setup
+const client = jwksClient({
+    jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`
 });
+
+const getKey = (header, callback) => {
+    client.getSigningKey(header.kid, (err, key) => {
+        if (err) {
+            return callback(err);
+        }
+        callback(null, key.publicKey || key.rsaPublicKey);
+    });
+};
+
+const verifyToken = (token) => {
+    return new Promise((resolve, reject) => {
+        jwt.verify(token, getKey, {
+            audience: process.env.AUTH0_API_IDENTIFIER,
+            issuer: `https://${process.env.AUTH0_DOMAIN}/`
+        }, (err, decoded) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(decoded);
+            }
+        });
+    });
+};
 
 // Main handler function
 exports.handler = async (event) => {
     try {
-        const userId = event.headers['Authorization']?.split(' ')[1]; // Get the userId from the Authorization header (Bearer token)
-        
-        if (!userId) {
+        const authHeader = event.headers['Authorization'];
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return {
                 statusCode: 401,
                 body: JSON.stringify({ message: 'Unauthorized' }),
                 headers: { 'Content-Type': 'application/json' }
             };
         }
+
+        const token = authHeader.split(' ')[1];
+        const decoded = await verifyToken(token);
+        const userId = decoded.sub;  // Auth0 `sub` claim is the user ID
 
         switch (event.httpMethod) {
             case 'GET':
@@ -74,10 +92,6 @@ exports.handler = async (event) => {
                         headers: { 'Content-Type': 'application/json' }
                     };
                 }
-
-                // Save the Auth0 user and token (if necessary)
-                const newUser = new Auth0User({ userId, token: event.headers['Authorization'] });
-                await newUser.save();
 
                 const newNote = new Note({ note, userId });
                 const savedNote = await newNote.save();
