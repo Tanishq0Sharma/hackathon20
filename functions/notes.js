@@ -1,82 +1,35 @@
-const mongoose = require('mongoose');
-const { verifyToken } = require('./authUtils');
+const { MongoClient, ObjectId } = require("mongodb");
+require("dotenv").config();
 
-mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-});
-
-// Note Schema
-const noteSchema = new mongoose.Schema({
-    note: { type: String, required: true },
-    user: { type: String, required: true },
-    auth0Id: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now }
-});
-const Note = mongoose.model('Note', noteSchema);
+const client = new MongoClient(process.env.MONGO_URI);
+const dbName = "TaskSync";
+const collectionName = "notes";
 
 exports.handler = async (event) => {
     try {
-        const { sub: auth0Id, name } = await verifyToken(event);
+        await client.connect();
+        const db = client.db(dbName);
+        const collection = db.collection(collectionName);
 
-        switch (event.httpMethod) {
-            case 'GET':
-                const notes = await Note.find({ auth0Id }).lean();
-                return {
-                    statusCode: 200,
-                    body: JSON.stringify(notes),
-                    headers: { 'Content-Type': 'application/json' }
-                };
-
-            case 'POST':
-                const { note } = JSON.parse(event.body);
-                if (!note?.trim()) {
-                    return {
-                        statusCode: 400,
-                        body: JSON.stringify({ error: 'Note content required' }),
-                        headers: { 'Content-Type': 'application/json' }
-                    };
-                }
-                const newNote = new Note({ note, user: name, auth0Id });
-                const savedNote = await newNote.save();
-                return {
-                    statusCode: 201,
-                    body: JSON.stringify(savedNote),
-                    headers: { 'Content-Type': 'application/json' }
-                };
-
-            case 'DELETE':
-                const noteId = event.path.split('/').pop();
-                const note = await Note.findOneAndDelete({ 
-                    _id: noteId, 
-                    auth0Id 
-                });
-                if (!note) {
-                    return {
-                        statusCode: 404,
-                        body: JSON.stringify({ error: 'Note not found' }),
-                        headers: { 'Content-Type': 'application/json' }
-                    };
-                }
-                return {
-                    statusCode: 200,
-                    body: JSON.stringify({ message: 'Note deleted' }),
-                    headers: { 'Content-Type': 'application/json' }
-                };
-
-            default:
-                return {
-                    statusCode: 405,
-                    body: JSON.stringify({ error: 'Method not allowed' }),
-                    headers: { 'Content-Type': 'application/json' }
-                };
+        if (event.httpMethod === "POST") {
+            const { note, user } = JSON.parse(event.body);
+            await collection.insertOne({ note, user });
+            return { statusCode: 200, body: JSON.stringify({ message: "Note saved" }) };
         }
+
+        if (event.httpMethod === "GET") {
+            const notes = await collection.find({}).toArray();
+            return { statusCode: 200, body: JSON.stringify(notes) };
+        }
+
+        if (event.httpMethod === "DELETE") {
+            const { id } = JSON.parse(event.body);
+            await collection.deleteOne({ _id: new ObjectId(id) });
+            return { statusCode: 200, body: JSON.stringify({ message: "Note deleted" }) };
+        }
+
+        return { statusCode: 405, body: "Method Not Allowed" };
     } catch (error) {
-        console.error('Error:', error);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: 'Server error' }),
-            headers: { 'Content-Type': 'application/json' }
-        };
+        return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
     }
 };
