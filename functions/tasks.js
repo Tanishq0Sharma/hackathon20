@@ -1,18 +1,50 @@
+const mongoose = require('mongoose');
 const { verifyToken } = require('./authUtils');
-const { Entry, encodeEntry, decodeEntry } = require('./database');
+
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+});
+
+const taskSchema = new mongoose.Schema({
+  combined: {
+    type: String,
+    required: true,
+    index: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+const Task = mongoose.model('Task', taskSchema);
+
+function encodeTask(auth0Id, content) {
+  return `authId:'${auth0Id}' createdAt:'${new Date().toISOString()}' content:'${content}'`;
+}
+
+function decodeTask(combined) {
+  const parts = combined.match(/(\w+):'([^']*)'/g);
+  return parts.reduce((acc, part) => {
+    const [key, value] = part.split(":'").map(s => s.replace(/'/g, ''));
+    acc[key] = value;
+    return acc;
+  }, {});
+}
 
 exports.handler = async (event) => {
   try {
-    const { sub: auth0Id, name } = await verifyToken(event);
+    const { sub: auth0Id } = await verifyToken(event);
 
     switch (event.httpMethod) {
       case 'GET':
-        const tasks = await Entry.find({ 
-          combined: { $regex: `authId:'${auth0Id}' type:'task'` } 
+        const tasks = await Task.find({ 
+          combined: { $regex: `authId:'${auth0Id}'` } 
         });
         
         const decoded = tasks.map(task => ({
-          ...decodeEntry(task.combined),
+          ...decodeTask(task.combined),
           _id: task._id
         }));
         
@@ -28,8 +60,8 @@ exports.handler = async (event) => {
           throw new Error('Task content required');
         }
         
-        const newTask = new Entry({
-          combined: encodeEntry({ sub: auth0Id, name }, task, 'task')
+        const newTask = new Task({
+          combined: encodeTask(auth0Id, task)
         });
         await newTask.save();
         
@@ -41,9 +73,9 @@ exports.handler = async (event) => {
 
       case 'DELETE':
         const taskId = event.path.split('/').pop();
-        await Entry.deleteOne({ 
+        await Task.deleteOne({ 
           _id: taskId,
-          combined: { $regex: `authId:'${auth0Id}' type:'task'` } 
+          combined: { $regex: `authId:'${auth0Id}'` } 
         });
         
         return {
