@@ -1,42 +1,81 @@
+const mongoose = require('mongoose');
 const { verifyToken } = require('./authUtils');
-const { Note, encodeData, decodeData } = require('./database');
+
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+});
+
+// User Schema
+const userSchema = new mongoose.Schema({
+  auth0Id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+const User = mongoose.model('User', userSchema);
+
+// Note Schema
+const noteSchema = new mongoose.Schema({
+  note: { type: String, required: true },
+  user: { type: String, required: true },
+  auth0Id: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+const Note = mongoose.model('Note', noteSchema);
 
 exports.handler = async (event) => {
   try {
-    const user = await verifyToken(event);
+    // Verify token and get user info
+    const { sub: auth0Id, name } = await verifyToken(event);
     
+    // Create/update user in database
+    await User.findOneAndUpdate(
+      { auth0Id },
+      { name },
+      { upsert: true, new: true }
+    );
+
     switch (event.httpMethod) {
       case 'GET':
-        const notes = await Note.find();
-        const userNotes = notes
-          .map(note => ({
-            _id: note._id,
-            ...decodeData(note.compressed)
-          }))
-          .filter(note => note.authId === user.authId);
-        
+        const notes = await Note.find({ auth0Id }).lean();
         return {
           statusCode: 200,
-          body: JSON.stringify(userNotes),
+          body: JSON.stringify(notes),
           headers: { 'Content-Type': 'application/json' }
         };
 
       case 'POST':
         const { note } = JSON.parse(event.body);
-        const newNote = new Note({
-          compressed: encodeData(user, note, 'note')
-        });
-        await newNote.save();
+        if (!note?.trim()) {
+          return {
+            statusCode: 400,
+            body: JSON.stringify({ error: 'Note content required' }),
+            headers: { 'Content-Type': 'application/json' }
+          };
+        }
         
+        const newNote = new Note({ note, user: name, auth0Id });
+        const savedNote = await newNote.save();
         return {
           statusCode: 201,
-          body: JSON.stringify({ message: 'Note created' }),
+          body: JSON.stringify(savedNote),
           headers: { 'Content-Type': 'application/json' }
         };
 
       case 'DELETE':
         const noteId = event.path.split('/').pop();
-        await Note.deleteOne({ _id: noteId });
+        const note = await Note.findOneAndDelete({ 
+          _id: noteId, 
+          auth0Id 
+        });
+        
+        if (!note) {
+          return {
+            statusCode: 404,
+            body: JSON.stringify({ error: 'Note not found' }),
+            headers: { 'Content-Type': 'application/json' }
+          };
+        }
         
         return {
           statusCode: 200,
@@ -52,9 +91,10 @@ exports.handler = async (event) => {
         };
     }
   } catch (error) {
+    console.error('Error:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: error.message }),
+      body: JSON.stringify({ error: 'Server error' }),
       headers: { 'Content-Type': 'application/json' }
     };
   }
