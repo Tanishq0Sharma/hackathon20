@@ -56,6 +56,20 @@
             color: var(--primary);
             margin-bottom: 2rem;
             text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            border-right: 4px solid var(--primary);
+            width: 0;
+            animation: typing 3.5s steps(30) 1s forwards, blink 0.75s step-end infinite;
+        }
+
+        @keyframes typing {
+            0% { width: 0; }
+            100% { width: 100%; }
+        }
+
+        @keyframes blink {
+            50% { border-color: transparent; }
         }
 
         button {
