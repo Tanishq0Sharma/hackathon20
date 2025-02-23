@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -289,6 +290,9 @@
             responseType: "token id_token",
             scope: "openid profile email"
         });
+
+        // Function Caller for Token Check
+        import { checkTokens } from './functions/checkTokens.js'; 
 
         // Utility Functions
         function showToast(message, type = 'success') {
