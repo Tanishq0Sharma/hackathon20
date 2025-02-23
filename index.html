@@ -44,9 +44,18 @@
 
         .auth-buttons {
             display: flex;
+            flex-direction: column;
+            align-items: center;
             gap: 1rem;
-            justify-content: flex-end;
             margin-bottom: 2rem;
+        }
+
+        #title {
+            font-size: 6rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 2rem;
+            text-align: center;
         }
 
         button {
@@ -219,6 +228,7 @@
 <body>
     <div class="container">
         <div class="auth-buttons">
+            <h1 id="title">Made by The Cooked Team</h1>
             <button id="login">Login</button>
             <button id="logout" class="hidden">Logout</button>
         </div>
