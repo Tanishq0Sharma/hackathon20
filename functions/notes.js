@@ -1,67 +1,30 @@
-const mongoose = require('mongoose');
 const { verifyToken } = require('./authUtils');
-
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-});
-
-const noteSchema = new mongoose.Schema({
-  combined: {
-    type: String,
-    required: true,
-    index: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-});
-
-const Note = mongoose.model('Note', noteSchema);
-
-function encodeNote(auth0Id, content) {
-  return `authId:'${auth0Id}' createdAt:'${new Date().toISOString()}' content:'${content}'`;
-}
-
-function decodeNote(combined) {
-  const parts = combined.match(/(\w+):'([^']*)'/g);
-  return parts.reduce((acc, part) => {
-    const [key, value] = part.split(":'").map(s => s.replace(/'/g, ''));
-    acc[key] = value;
-    return acc;
-  }, {});
-}
+const { Note, encodeData, decodeData } = require('./database');
 
 exports.handler = async (event) => {
   try {
-    const { sub: auth0Id } = await verifyToken(event);
-
+    const user = await verifyToken(event);
+    
     switch (event.httpMethod) {
       case 'GET':
-        const notes = await Note.find({ 
-          combined: { $regex: `authId:'${auth0Id}'` } 
-        });
-        
-        const decoded = notes.map(note => ({
-          ...decodeNote(note.combined),
-          _id: note._id
-        }));
+        const notes = await Note.find();
+        const userNotes = notes
+          .map(note => ({
+            _id: note._id,
+            ...decodeData(note.compressed)
+          }))
+          .filter(note => note.authId === user.authId);
         
         return {
           statusCode: 200,
-          body: JSON.stringify(decoded),
+          body: JSON.stringify(userNotes),
           headers: { 'Content-Type': 'application/json' }
         };
 
       case 'POST':
         const { note } = JSON.parse(event.body);
-        if (!note?.trim()) {
-          throw new Error('Note content required');
-        }
-        
         const newNote = new Note({
-          combined: encodeNote(auth0Id, note)
+          compressed: encodeData(user, note, 'note')
         });
         await newNote.save();
         
@@ -73,10 +36,7 @@ exports.handler = async (event) => {
 
       case 'DELETE':
         const noteId = event.path.split('/').pop();
-        await Note.deleteOne({ 
-          _id: noteId,
-          combined: { $regex: `authId:'${auth0Id}'` } 
-        });
+        await Note.deleteOne({ _id: noteId });
         
         return {
           statusCode: 200,
@@ -93,7 +53,7 @@ exports.handler = async (event) => {
     }
   } catch (error) {
     return {
-      statusCode: error.message.includes('Invalid token') ? 401 : 500,
+      statusCode: 500,
       body: JSON.stringify({ error: error.message }),
       headers: { 'Content-Type': 'application/json' }
     };
