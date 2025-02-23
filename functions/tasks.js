@@ -5,7 +5,18 @@ mongoose.connect(process.env.MONGODB_URI, {
     useUnifiedTopology: true
 });
 
-const Task = mongoose.model('Task', { task: String });
+// Define the Note schema
+const Task = mongoose.model('Note', { 
+    note: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    }
+});
 
 exports.handler = async (event) => {
     try {
