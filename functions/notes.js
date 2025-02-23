@@ -6,16 +6,12 @@ mongoose.connect(process.env.MONGODB_URI, {
     useUnifiedTopology: true
 });
 
-// Define the Note schema with auth0Id field
+// Define the Note schema
 const Note = mongoose.model('Note', { 
     note: {
         type: String,
         required: true,
         trim: true
-    },
-    auth0Id: {
-        type: String,
-        required: true
     },
     createdAt: {
         type: Date,
@@ -25,21 +21,11 @@ const Note = mongoose.model('Note', {
 
 // Main handler function
 exports.handler = async (event) => {
-    const auth0Id = event.headers['Authorization']; // Assuming Auth0 ID is passed in headers
-
-    if (!auth0Id) {
-        return {
-            statusCode: 400,
-            body: JSON.stringify({ message: 'Auth0 ID is required' }),
-            headers: { 'Content-Type': 'application/json' }
-        };
-    }
-
     try {
         switch (event.httpMethod) {
             case 'GET':
-                // Fetch notes for the specific user, sorted by creation date (newest first)
-                const notes = await Note.find({ auth0Id })
+                // Fetch all notes, sorted by creation date (newest first)
+                const notes = await Note.find()
                     .sort({ createdAt: -1 }) // Sort by newest first
                     .lean();
                 return {
@@ -58,7 +44,7 @@ exports.handler = async (event) => {
                         headers: { 'Content-Type': 'application/json' }
                     };
                 }
-                const newNote = new Note({ note, auth0Id });
+                const newNote = new Note({ note });
                 const savedNote = await newNote.save();
                 return {
                     statusCode: 201,
@@ -76,7 +62,7 @@ exports.handler = async (event) => {
                         headers: { 'Content-Type': 'application/json' }
                     };
                 }
-                const deletedNote = await Note.findOneAndDelete({ _id: noteId, auth0Id });
+                const deletedNote = await Note.findByIdAndDelete(noteId);
                 if (!deletedNote) {
                     return {
                         statusCode: 404,
