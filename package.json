@@ -8,6 +8,8 @@
   "dependencies": {
     "mongoose": "^6.0.0",
     "axios": "^0.21.1",
-    "auth0": "^3.0.0"
+    "auth0": "^3.0.0",
+    "jsonwebtoken": "^8.5.1",
+    "jwks-rsa": "^2.0.1"
   }
 }
