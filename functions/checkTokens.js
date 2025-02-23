@@ -2,7 +2,7 @@
 const mongoose = require('mongoose');
 
 // Your MongoDB URI
-const mongoURI = "your-mongodb-uri-here";
+const mongoURI = "mongodb+srv://thebig4:hackathon@2025tcnjhackathon.5nmfm.mongodb.net/?retryWrites=true&w=majority&appName=2025TCNJHackathone";
 
 async function checkMongoDBConnection() {
     try {
