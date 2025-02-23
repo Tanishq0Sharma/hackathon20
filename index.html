@@ -8,11 +8,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="icon" href="logonofire.ico" type="image/x-icon">
-        <!-- Background Music -->
-<audio id="backgroundMusic" autoplay loop style="display:none;">
-    <source src="jazz.mp3" type="audio/mp3">
-    Your browser does not support the audio element.
-</audio>
+    <!-- Background Music -->
+    <audio id="backgroundMusic" autoplay loop style="display:none;">
+        <source src="jazz.mp3" type="audio/mp3">
+        Your browser does not support the audio element.
+    </audio>
 
     <style>
         :root {
@@ -21,6 +21,7 @@
             --accent: #ffcc00;
             --background: #1c1c1c;
             --text: #f5f5f5;
+            --oled-black: #000000;
         }
 
         * {
@@ -31,10 +32,15 @@
 
         body {
             font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #1c1c1c 0%, #333 100%);
+            background: linear-gradient(135deg, #333 0%, #000 100%);
             color: var(--text);
             min-height: 100vh;
             padding: 3rem;
+            transition: background 2s ease;
+        }
+
+        body:hover {
+            background: linear-gradient(135deg, #1c1c1c 0%, #000 100%);
         }
 
         .container {
@@ -244,7 +250,7 @@
     <div class="container">
         <div class="auth-buttons">
             <h1 id="title">Made by The Cooked Team</h1>
-            <h2 id="subtitle">Share your Tasks and Notes With Everyone!</h2> <!-- Subtitle added here -->
+            <h2 id="subtitle">Share your Tasks and Notes With Everyone!</h2>
             <h3 id="subtitle">We are acc sooo cooked...</h3>
             <button id="login">Login</button>
             <button id="logout" class="hidden">Logout</button>
@@ -326,10 +332,9 @@
             auth0Client.parseHash((err, authResult) => {
                 if (authResult?.idToken) {
                     localStorage.setItem('id_token', authResult.idToken);
-                    window.location.href = '/';
-                } else if (err) {
-                    console.error('Auth error:', err);
-                    window.location.href = '/';
+                    showAuthenticatedUI();
+                } else {
+                    showToast('Authentication failed', 'error');
                 }
             });
         }
@@ -338,105 +343,46 @@
             document.getElementById('login').classList.add('hidden');
             document.getElementById('logout').classList.remove('hidden');
             document.getElementById('app').classList.remove('hidden');
-            fetchTasks();
-            fetchNotes();
         }
 
-        // Task Functions
-        async function addTask() {
-            await withLoading(async () => {
-                const taskInput = document.getElementById('taskInput');
-                if (!taskInput.value.trim()) return;
-
-                const response = await axios.post('/.netlify/functions/tasks', {
-                    task: taskInput.value
-                });
-
-                if (response.status === 201) {
-                    taskInput.value = '';
-                    await Promise.all([fetchTasks(), fetchNotes()]);
-                    showToast('Task added successfully!');
-                }
-            });
-        }
-
-        async function fetchTasks() {
-            try {
-                const response = await axios.get('/.netlify/functions/tasks');
-                const taskList = document.getElementById('taskList');
-                taskList.innerHTML = '';
-                
-                response.data.forEach(task => {
-                    const taskItem = document.createElement('div');
-                    taskItem.className = 'task-item';
-                    taskItem.innerHTML = `<span>${task.task}</span>`;
-                    
-                    // Add click event listener to delete task
-                    taskItem.onclick = () => deleteTask(task._id);
-
-                    taskList.appendChild(taskItem);
-                });
-            } catch (error) {
-                console.error('Error fetching tasks:', error);
+        // Task Handlers
+        function addTask() {
+            const taskInput = document.getElementById('taskInput');
+            const taskList = document.getElementById('taskList');
+            if (taskInput.value.trim()) {
+                const taskItem = document.createElement('div');
+                taskItem.classList.add('task-item');
+                taskItem.innerHTML = `
+                    ${taskInput.value}
+                    <button class="delete-btn" onclick="deleteTask(this)">❌</button>
+                `;
+                taskList.appendChild(taskItem);
+                taskInput.value = '';
             }
         }
 
-        async function deleteTask(taskId) {
-            await withLoading(async () => {
-                const response = await axios.delete(`/.netlify/functions/tasks/${taskId}`);
-                if (response.status === 200) {
-                    await Promise.all([fetchTasks(), fetchNotes()]);
-                    showToast('Task deleted successfully!');
-                }
-            });
+        function deleteTask(button) {
+            button.parentElement.remove();
         }
 
-        // Secure Notes Functions
-        async function saveNote() {
-            await withLoading(async () => {
-                const noteInput = document.getElementById('noteInput');
-                if (!noteInput.value.trim()) return;
-
-                const response = await axios.post('/.netlify/functions/notes', {
-                    note: noteInput.value
-                });
-
-                if (response.status === 201) {
-                    noteInput.value = '';
-                    await fetchNotes();
-                    showToast('Secure Note saved!');
-                }
-            });
-        }
-
-        async function fetchNotes() {
-            try {
-                const response = await axios.get('/.netlify/functions/notes');
-                const noteDisplay = document.getElementById('noteDisplay');
-                noteDisplay.innerHTML = '';
-                
-                response.data.forEach(note => {
-                    const noteItem = document.createElement('div');
-                    noteItem.className = 'note-item';
-                    noteItem.innerHTML = `<span>${note.note}</span>`;
-
-                    noteItem.onclick = () => deleteNote(note._id);
-
-                    noteDisplay.appendChild(noteItem);
-                });
-            } catch (error) {
-                console.error('Error fetching notes:', error);
+        // Note Handlers
+        function saveNote() {
+            const noteInput = document.getElementById('noteInput');
+            const noteDisplay = document.getElementById('noteDisplay');
+            if (noteInput.value.trim()) {
+                const noteItem = document.createElement('div');
+                noteItem.classList.add('note-item');
+                noteItem.innerHTML = `
+                    ${noteInput.value}
+                    <button class="delete-btn" onclick="deleteNote(this)">❌</button>
+                `;
+                noteDisplay.appendChild(noteItem);
+                noteInput.value = '';
             }
         }
 
-        async function deleteNote(noteId) {
-            await withLoading(async () => {
-                const response = await axios.delete(`/.netlify/functions/notes/${noteId}`);
-                if (response.status === 200) {
-                    await fetchNotes();
-                    showToast('Note deleted successfully!');
-                }
-            });
+        function deleteNote(button) {
+            button.parentElement.remove();
         }
     </script>
 </body>
