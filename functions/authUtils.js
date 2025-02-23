@@ -13,7 +13,7 @@ async function verifyToken(event) {
   try {
     const profile = await auth0.getProfile(token);
     return {
-      sub: profile.sub,
+      authId: profile.sub,
       name: profile.name || profile.nickname || 'Anonymous'
     };
   } catch (error) {
