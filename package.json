@@ -1,3 +1,4 @@
+
 {
   "name": "hacktcnj025",
   "version": "1.0.0",
@@ -6,7 +7,8 @@
     "build": "echo 'Build complete'"
   },
   "dependencies": {
-    "mongoose": "8.10.1",
-    "axios": "1.7.9"
+    "mongoose": "^6.0.0",
+    "axios": "^0.21.1"
+    "auth0": "^3.0.0"
   }
 }
