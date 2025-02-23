@@ -56,21 +56,6 @@
             color: var(--primary);
             margin-bottom: 2rem;
             text-align: center;
-            white-space: nowrap;
-            overflow: hidden;
-            border-right: 4px solid var(--primary);
-            width: 0;
-            animation: typing 2s steps(30) 1s forwards, blink 0.75s step-end infinite;
-            line-height: 1.5;
-        }
-
-        @keyframes typing {
-            0% { width: 0; }
-            100% { width: 100%; }
-        }
-
-        @keyframes blink {
-            50% { border-color: transparent; }
         }
 
         button {
@@ -383,13 +368,13 @@
             await withLoading(async () => {
                 const response = await axios.delete(`/.netlify/functions/tasks/${taskId}`);
                 if (response.status === 200) {
-                    await fetchTasks();
+                    await Promise.all([fetchTasks(), fetchNotes()]);
                     showToast('Task deleted successfully!');
                 }
             });
         }
 
-        // Note Functions
+        // Secure Notes Functions
         async function saveNote() {
             await withLoading(async () => {
                 const noteInput = document.getElementById('noteInput');
@@ -402,7 +387,7 @@
                 if (response.status === 201) {
                     noteInput.value = '';
                     await fetchNotes();
-                    showToast('Note saved successfully!');
+                    showToast('Secure Note saved!');
                 }
             });
         }
