@@ -300,9 +300,8 @@
             const taskList = document.getElementById('taskList');
             taskList.innerHTML = tasks.map(task => `
                 <div class="task-item">
-                    <span>${task.task}</span>
+                    <span>${task.content}</span>
                     <div class="task-meta">
-                        <span class="user-tag">👤 ${task.user}</span>
                         <button class="delete-btn" onclick="deleteTask('${task._id}')">×</button>
                     </div>
                 </div>
@@ -355,9 +354,8 @@
             const noteDisplay = document.getElementById('noteDisplay');
             noteDisplay.innerHTML = notes.map(note => `
                 <div class="note-item">
-                    <div>${note.note}</div>
+                    <div>${note.content}</div>
                     <div class="note-meta">
-                        <span class="user-tag">👤 ${note.user}</span>
                         <button class="delete-btn" onclick="deleteNote('${note._id}')">×</button>
                     </div>
                 </div>
