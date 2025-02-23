@@ -60,7 +60,8 @@
             overflow: hidden;
             border-right: 4px solid var(--primary);
             width: 0;
-            animation: typing 3.5s steps(30) 1s forwards, blink 0.75s step-end infinite;
+            animation: typing 2s steps(30) 1s forwards, blink 0.75s step-end infinite;
+            line-height: 1.5;
         }
 
         @keyframes typing {
@@ -382,13 +383,13 @@
             await withLoading(async () => {
                 const response = await axios.delete(`/.netlify/functions/tasks/${taskId}`);
                 if (response.status === 200) {
-                    await Promise.all([fetchTasks(), fetchNotes()]);
+                    await fetchTasks();
                     showToast('Task deleted successfully!');
                 }
             });
         }
 
-        // Secure Notes Functions
+        // Note Functions
         async function saveNote() {
             await withLoading(async () => {
                 const noteInput = document.getElementById('noteInput');
@@ -401,7 +402,7 @@
                 if (response.status === 201) {
                     noteInput.value = '';
                     await fetchNotes();
-                    showToast('Secure Note saved!');
+                    showToast('Note saved successfully!');
                 }
             });
         }
