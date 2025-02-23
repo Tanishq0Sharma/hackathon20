@@ -1,232 +1,105 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TaskSync & SecureNotes Pro</title>
+    <title>TaskSync & SecureNotes</title>
     <script src="https://cdn.auth0.com/js/auth0/9.18/auth0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        /* Keep all existing CSS styles */
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to right, #6a11cb, #2575fc);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            width: 90%;
+            max-width: 500px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        .hidden { display: none; }
+        input, textarea, button {
+            width: 100%;
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+        button {
+            background: #2575fc;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover { background: #1a5bd1; }
+        h2, h3 { color: #333; }
+        ul { list-style: none; padding: 0; }
+        li {
+            background: #f8f8f8;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="auth-buttons">
-            <button id="login">Login</button>
-            <button id="logout" class="hidden">Logout</button>
-        </div>
+        <h2>TaskSync & SecureNotes</h2>
+        <button id="login">Login</button>
+        <button id="logout" class="hidden">Logout</button>
         
         <div id="app" class="hidden">
-            <div class="app-content">
-                <div class="section">
-                    <h2>📝 Task List</h2>
-                    <input type="text" id="taskInput" placeholder="Add a new task...">
-                    <button onclick="addTask()">Add Task</button>
-                    <div class="task-list" id="taskList"></div>
-                </div>
-                
-                <div class="section">
-                    <h2>🔒 Secure Notes</h2>
-                    <textarea id="noteInput" placeholder="Write your secure note..." rows="4"></textarea>
-                    <button onclick="saveNote()">Save Note</button>
-                    <div class="note-display" id="noteDisplay"></div>
-                </div>
-            </div>
+            <h3>Task List</h3>
+            <input type="text" id="taskInput" placeholder="Enter a new task">
+            <button onclick="addTask()">Add Task</button>
+            <ul id="taskList"></ul>
+            
+            <h3>Secure Notes</h3>
+            <textarea id="noteInput" placeholder="Write your secure note..."></textarea>
+            <button onclick="saveNote()">Save Note</button>
+            <div id="noteDisplay"></div>
         </div>
-
-        <div id="loading" class="hidden">
-            <div class="loader"></div>
-        </div>
-        <div id="toast" class="toast"></div>
     </div>
-
+    
     <script>
-        // Auth0 Configuration
         const auth0Client = new auth0.WebAuth({
             domain: "tanishqs.us.auth0.com",
             clientID: "EqkpRMJsZ7i4keAY7OOA0atzKJ0pivqx",
-            redirectUri: "https://hacktcnj025.netlify.app/callback.html",
+            redirectUri: window.location.origin + "/callback.html",
             responseType: "token id_token",
             scope: "openid profile email"
         });
+        
+        document.getElementById("login").onclick = () => auth0Client.authorize();
+        document.getElementById("logout").onclick = () => logout();
 
-        // Utility Functions
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = `toast ${type} visible`;
-            setTimeout(() => toast.classList.remove('visible'), 3000);
-        }
-
-        async function withLoading(fn) {
-            const loader = document.getElementById('loading');
-            try {
-                loader.classList.remove('hidden');
-                return await fn();
-            } catch (error) {
-                showToast(error.message || 'Operation failed', 'error');
-                throw error;
-            } finally {
-                loader.classList.add('hidden');
-            }
-        }
-
-        // Authentication Handlers
-        document.getElementById('login').onclick = () => auth0Client.authorize();
-        document.getElementById('logout').onclick = () => {
-            localStorage.removeItem('id_token');
+        function logout() {
+            localStorage.removeItem("id_token");
             auth0Client.logout({ returnTo: window.location.origin });
-        };
-
-        // Initial Load
-        window.onload = function() {
-            const token = localStorage.getItem('id_token');
+        }
+        
+        window.onload = function () {
+            const token = localStorage.getItem("id_token");
             if (token) {
-                showAuthenticatedUI();
-            } else if (window.location.hash) {
-                handleAuthCallback();
+                document.getElementById("login").classList.add("hidden");
+                document.getElementById("logout").classList.remove("hidden");
+                document.getElementById("app").classList.remove("hidden");
+                fetchTasks();
+                fetchNotes();
             }
         };
-
-        function handleAuthCallback() {
-            auth0Client.parseHash((err, authResult) => {
-                if (authResult?.idToken) {
-                    localStorage.setItem('id_token', authResult.idToken);
-                    window.location.href = '/';
-                } else if (err) {
-                    console.error('Auth error:', err);
-                    window.location.href = '/';
-                }
-            });
-        }
-
-        function showAuthenticatedUI() {
-            document.getElementById('login').classList.add('hidden');
-            document.getElementById('logout').classList.remove('hidden');
-            document.getElementById('app').classList.remove('hidden');
-            fetchTasks();
-            fetchNotes();
-        }
-
-        // Task Functions
-        async function addTask() {
-            await withLoading(async () => {
-                const taskInput = document.getElementById('taskInput');
-                if (!taskInput.value.trim()) return;
-
-                const token = localStorage.getItem('id_token');
-                const response = await axios.post('/.netlify/functions/tasks', {
-                    task: taskInput.value
-                }, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-
-                if (response.status === 201) {
-                    taskInput.value = '';
-                    await Promise.all([fetchTasks(), fetchNotes()]);
-                    showToast('Task added successfully!');
-                }
-            });
-        }
-
-        async function fetchTasks() {
-            try {
-                const token = localStorage.getItem('id_token');
-                const response = await axios.get('/.netlify/functions/tasks', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-
-                const taskList = document.getElementById('taskList');
-                taskList.innerHTML = '';
-                response.data.forEach(task => {
-                    const taskItem = document.createElement('div');
-                    taskItem.className = 'task-item';
-                    taskItem.innerHTML = `
-                        <span>${task.task}</span>
-                        <button class="delete-btn" onclick="deleteTask('${task._id}')">×</button>
-                    `;
-                    taskList.appendChild(taskItem);
-                });
-            } catch (error) {
-                console.error('Error fetching tasks:', error);
-                if (error.response?.status === 401) logout();
-            }
-        }
-
-        async function deleteTask(taskId) {
-            await withLoading(async () => {
-                const token = localStorage.getItem('id_token');
-                const response = await axios.delete(`/.netlify/functions/tasks/${taskId}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-
-                if (response.status === 200) {
-                    await Promise.all([fetchTasks(), fetchNotes()]);
-                    showToast('Task deleted successfully!');
-                }
-            });
-        }
-
-        // Note Functions
-        async function saveNote() {
-            await withLoading(async () => {
-                const noteInput = document.getElementById('noteInput');
-                if (!noteInput.value.trim()) return;
-
-                const token = localStorage.getItem('id_token');
-                const response = await axios.post('/.netlify/functions/notes', {
-                    note: noteInput.value
-                }, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-
-                if (response.status === 201) {
-                    noteInput.value = '';
-                    await Promise.all([fetchTasks(), fetchNotes()]);
-                    showToast('Note saved successfully!');
-                }
-            });
-        }
-
-        async function fetchNotes() {
-            try {
-                const token = localStorage.getItem('id_token');
-                const response = await axios.get('/.netlify/functions/notes', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-
-                const noteDisplay = document.getElementById('noteDisplay');
-                noteDisplay.innerHTML = '';
-                response.data.forEach(note => {
-                    const noteItem = document.createElement('div');
-                    noteItem.className = 'note-item';
-                    noteItem.innerHTML = `
-                        <div>${note.note}</div>
-                        <button class="delete-btn" onclick="deleteNote('${note._id}')">×</button>
-                    `;
-                    noteDisplay.appendChild(noteItem);
-                });
-            } catch (error) {
-                console.error('Error fetching notes:', error);
-                if (error.response?.status === 401) logout();
-            }
-        }
-
-        async function deleteNote(noteId) {
-            await withLoading(async () => {
-                const token = localStorage.getItem('id_token');
-                const response = await axios.delete(`/.netlify/functions/notes/${noteId}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-
-                if (response.status === 200) {
-                    await Promise.all([fetchTasks(), fetchNotes()]);
-                    showToast('Note deleted successfully!');
-                }
-            });
-        }
     </script>
 </body>
 </html>
