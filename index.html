@@ -128,12 +128,12 @@
             transition: all 0.3s ease;
         }
 
-        .task-item:hover {
+        .task-item:hover, .note-item:hover {
             text-decoration: line-through;
             color: #888; /* Change color on hover for better visibility */
         }
 
-        .task-item:hover .delete-btn {
+        .task-item:hover .delete-btn, .note-item:hover .delete-btn {
             display: none; /* Hide the delete button when hovering */
         }
 
@@ -364,7 +364,7 @@
             });
         }
 
-        // Note Functions
+        // Secure Notes Functions
         async function saveNote() {
             await withLoading(async () => {
                 const noteInput = document.getElementById('noteInput');
@@ -377,7 +377,7 @@
                 if (response.status === 201) {
                     noteInput.value = '';
                     await fetchNotes();
-                    showToast('Note saved!');
+                    showToast('Secure Note saved!');
                 }
             });
         }
@@ -387,16 +387,30 @@
                 const response = await axios.get('/.netlify/functions/notes');
                 const noteDisplay = document.getElementById('noteDisplay');
                 noteDisplay.innerHTML = '';
-
+                
                 response.data.forEach(note => {
                     const noteItem = document.createElement('div');
                     noteItem.className = 'note-item';
                     noteItem.innerHTML = `<span>${note.note}</span>`;
+                    
+                    // Add click event listener to delete note
+                    noteItem.onclick = () => deleteNote(note._id);
+
                     noteDisplay.appendChild(noteItem);
                 });
             } catch (error) {
                 console.error('Error fetching notes:', error);
             }
+        }
+
+        async function deleteNote(noteId) {
+            await withLoading(async () => {
+                const response = await axios.delete(`/.netlify/functions/notes/${noteId}`);
+                if (response.status === 200) {
+                    await fetchNotes();
+                    showToast('Note deleted successfully!');
+                }
+            });
         }
     </script>
 </body>
