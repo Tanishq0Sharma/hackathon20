@@ -6,8 +6,8 @@ mongoose.connect(process.env.MONGODB_URI, {
 });
 
 // Define the Note schema
-const Task = mongoose.model('Note', { 
-    note: {
+const Task = mongoose.model('Task', { 
+    task: {
         type: String,
         required: true,
         trim: true
