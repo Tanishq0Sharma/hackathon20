@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,12 +9,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="icon" href="logonofire.ico" type="image/x-icon">
-    <!-- Background Music Made By Oak Studios-->
-    <audio id="backgroundMusic" autoplay loop style="display:none;">
-        <source src="jazz.mp3" type="audio/mp3">
-        Your browser does not support the audio element.
-    </audio>
-
     <style>
         :root {
             --primary: #ffd700;
@@ -290,6 +285,9 @@
             scope: "openid profile email"
         });
 
+        // API Configuration
+        const API_URL = '/.netlify/functions';
+
         // Utility Functions
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
@@ -319,10 +317,12 @@
         };
 
         // Initial Load
-        window.onload = function() {
+        window.onload = async function() {
             const token = localStorage.getItem('id_token');
             if (token) {
                 showAuthenticatedUI();
+                await fetchTasks();
+                await fetchNotes();
             } else if (window.location.hash) {
                 handleAuthCallback();
             }
@@ -346,43 +346,81 @@
         }
 
         // Task Handlers
-        function addTask() {
-            const taskInput = document.getElementById('taskInput');
+        async function fetchTasks() {
+            const response = await fetch(`${API_URL}/tasks`);
+            const tasks = await response.json();
             const taskList = document.getElementById('taskList');
+            taskList.innerHTML = tasks.map(task => `
+                <div class="task-item">
+                    ${task.task}
+                    <button class="delete-btn" onclick="deleteTask('${task._id}')">❌</button>
+                </div>
+            `).join('');
+        }
+
+        async function addTask() {
+            const taskInput = document.getElementById('taskInput');
             if (taskInput.value.trim()) {
-                const taskItem = document.createElement('div');
-                taskItem.classList.add('task-item');
-                taskItem.innerHTML = `
-                    ${taskInput.value}
-                    <button class="delete-btn" onclick="deleteTask(this)">❌</button>
-                `;
-                taskList.appendChild(taskItem);
+                await fetch(`${API_URL}/tasks`, {
+                    method: 'POST',
+                    body: JSON.stringify({ task: taskInput.value }),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('id_token')}`
+                    }
+                });
                 taskInput.value = '';
+                await fetchTasks();
             }
         }
 
-        function deleteTask(button) {
-            button.parentElement.remove();
+        async function deleteTask(taskId) {
+            await fetch(`${API_URL}/tasks/${taskId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('id_token')}`
+                }
+            });
+            await fetchTasks();
         }
 
         // Note Handlers
-        function saveNote() {
-            const noteInput = document.getElementById('noteInput');
+        async function fetchNotes() {
+            const response = await fetch(`${API_URL}/notes`);
+            const notes = await response.json();
             const noteDisplay = document.getElementById('noteDisplay');
+            noteDisplay.innerHTML = notes.map(note => `
+                <div class="note-item">
+                    ${note.note}
+                    <button class="delete-btn" onclick="deleteNote('${note._id}')">❌</button>
+                </div>
+            `).join('');
+        }
+
+        async function saveNote() {
+            const noteInput = document.getElementById('noteInput');
             if (noteInput.value.trim()) {
-                const noteItem = document.createElement('div');
-                noteItem.classList.add('note-item');
-                noteItem.innerHTML = `
-                    ${noteInput.value}
-                    <button class="delete-btn" onclick="deleteNote(this)">❌</button>
-                `;
-                noteDisplay.appendChild(noteItem);
+                await fetch(`${API_URL}/notes`, {
+                    method: 'POST',
+                    body: JSON.stringify({ note: noteInput.value }),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('id_token')}`
+                    }
+                });
                 noteInput.value = '';
+                await fetchNotes();
             }
         }
 
-        function deleteNote(button) {
-            button.parentElement.remove();
+        async function deleteNote(noteId) {
+            await fetch(`${API_URL}/notes/${noteId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('id_token')}`
+                }
+            });
+            await fetchNotes();
         }
     </script>
 </body>
