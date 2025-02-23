@@ -1,35 +1,40 @@
 const mongoose = require('mongoose');
 
+// Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 });
 
-const entrySchema = new mongoose.Schema({
-  combined: {
-    type: String,
-    required: true,
-    index: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
+// Encoding function (compressor)
+function encodeData(user, content, type) {
+  const timestamp = new Date().toISOString();
+  return `user:'${user.name}' authId:'${user.authId}' time:'${timestamp}' ${type}:'${content.replace(/'/g, "\\'")}'`;
+}
+
+// Decoding function (decompressor)
+function decodeData(encodedString) {
+  const pattern = /(\w+):'((?:\\'|[^'])*)'/g;
+  const data = {};
+  let match;
+  
+  while ((match = pattern.exec(encodedString)) !== null) {
+    data[match[1]] = match[2].replace(/\\'/g, "'");
   }
+  
+  return data;
+}
+
+// Task Schema
+const taskSchema = new mongoose.Schema({
+  compressed: String
 });
+const Task = mongoose.model('Task', taskSchema);
 
-const Entry = mongoose.model('Entry', entrySchema);
+// Note Schema
+const noteSchema = new mongoose.Schema({
+  compressed: String
+});
+const Note = mongoose.model('Note', noteSchema);
 
-function encodeEntry(userData, content, type) {
-  return `user:'${userData.name}' authId:'${userData.sub}' type:'${type}' createdAt:'${new Date().toISOString()}' content:'${content}'`;
-}
-
-function decodeEntry(entryString) {
-  const parts = entryString.match(/(\w+):'([^']*)'/g);
-  return parts.reduce((acc, part) => {
-    const [key, value] = part.split(":'").map(s => s.replace(/'/g, ''));
-    acc[key] = value;
-    return acc;
-  }, {});
-}
-
-module.exports = { Entry, encodeEntry, decodeEntry };
+module.exports = { Task, Note, encodeData, decodeData };
