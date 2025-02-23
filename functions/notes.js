@@ -1,18 +1,50 @@
+const mongoose = require('mongoose');
 const { verifyToken } = require('./authUtils');
-const { Entry, encodeEntry, decodeEntry } = require('./database');
+
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+});
+
+const noteSchema = new mongoose.Schema({
+  combined: {
+    type: String,
+    required: true,
+    index: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+const Note = mongoose.model('Note', noteSchema);
+
+function encodeNote(auth0Id, content) {
+  return `authId:'${auth0Id}' createdAt:'${new Date().toISOString()}' content:'${content}'`;
+}
+
+function decodeNote(combined) {
+  const parts = combined.match(/(\w+):'([^']*)'/g);
+  return parts.reduce((acc, part) => {
+    const [key, value] = part.split(":'").map(s => s.replace(/'/g, ''));
+    acc[key] = value;
+    return acc;
+  }, {});
+}
 
 exports.handler = async (event) => {
   try {
-    const { sub: auth0Id, name } = await verifyToken(event);
+    const { sub: auth0Id } = await verifyToken(event);
 
     switch (event.httpMethod) {
       case 'GET':
-        const notes = await Entry.find({ 
-          combined: { $regex: `authId:'${auth0Id}' type:'note'` } 
+        const notes = await Note.find({ 
+          combined: { $regex: `authId:'${auth0Id}'` } 
         });
         
         const decoded = notes.map(note => ({
-          ...decodeEntry(note.combined),
+          ...decodeNote(note.combined),
           _id: note._id
         }));
         
@@ -28,8 +60,8 @@ exports.handler = async (event) => {
           throw new Error('Note content required');
         }
         
-        const newNote = new Entry({
-          combined: encodeEntry({ sub: auth0Id, name }, note, 'note')
+        const newNote = new Note({
+          combined: encodeNote(auth0Id, note)
         });
         await newNote.save();
         
@@ -41,9 +73,9 @@ exports.handler = async (event) => {
 
       case 'DELETE':
         const noteId = event.path.split('/').pop();
-        await Entry.deleteOne({ 
+        await Note.deleteOne({ 
           _id: noteId,
-          combined: { $regex: `authId:'${auth0Id}' type:'note'` } 
+          combined: { $regex: `authId:'${auth0Id}'` } 
         });
         
         return {
