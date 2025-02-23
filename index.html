@@ -6,8 +6,7 @@
     <title>Task & Note Manager</title>
     <script src="https://cdn.auth0.com/js/auth0/9.18/auth0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <style>
+<style>
         :root {
             --primary: #6366f1;
             --secondary: #4f46e5;
@@ -193,198 +192,137 @@
     <div class="container">
         <div class="auth-buttons">
             <button id="login">Login</button>
-            <button id="logout" class="hidden">Logout</button>
+            <button id="logout" style="display: none;">Logout</button>
         </div>
         
-        <div id="app" class="hidden">
-            <div class="app-content">
-                <div class="section">
-                    <h2>📝 Task List</h2>
-                    <input type="text" id="taskInput" placeholder="Add a new task...">
-                    <button onclick="addTask()">Add Task</button>
-                    <div class="task-list" id="taskList"></div>
-                </div>
-                
-                <div class="section">
-                    <h2>🔒 Secure Notes</h2>
-                    <textarea id="noteInput" placeholder="Write your secure note..." rows="4"></textarea>
-                    <button onclick="saveNote()">Save Note</button>
-                    <div class="note-display" id="noteDisplay"></div>
-                </div>
-            </div>
+        <div id="app" style="display: none;">
+            <h2>Tasks</h2>
+            <input type="text" id="taskInput">
+            <button onclick="addTask()">Add Task</button>
+            <div id="tasks"></div>
+            
+            <h2>Notes</h2>
+            <textarea id="noteInput"></textarea>
+            <button onclick="addNote()">Add Note</button>
+            <div id="notes"></div>
         </div>
-
-        <div id="loading" class="hidden">
-            <div class="loader"></div>
-        </div>
-        <div id="toast" class="toast"></div>
     </div>
 
     <script>
         const auth0Client = new auth0.WebAuth({
-            domain: "tanishqs.us.auth0.com",
-            clientID: "EqkpRMJsZ7i4keAY7OOA0atzKJ0pivqx",
-            redirectUri: "https://hacktcnj025.netlify.app/callback.html",
-            responseType: "token id_token",
-            scope: "openid profile email"
+            domain: "your-auth0-domain.auth0.com",
+            clientID: "your-client-id",
+            redirectUri: window.location.origin + "/callback.html",
+            responseType: "token id_token"
         });
 
-        // Authentication
+        // Authentication handlers
         document.getElementById('login').onclick = () => auth0Client.authorize();
         document.getElementById('logout').onclick = () => {
-            localStorage.removeItem('id_token');
+            localStorage.removeItem('id_token'); // Remove token on logout
             auth0Client.logout({ returnTo: window.location.origin });
         };
 
         // Initial load
-        window.onload = function() {
-            const token = localStorage.getItem('id_token');
+        window.onload = async () => {
+            const token = localStorage.getItem('id_token'); // Retrieve token
             if (token) {
-                showAuthenticatedUI();
-            } else if (window.location.hash) {
-                handleAuthCallback();
+                document.getElementById('login').style.display = 'none';
+                document.getElementById('logout').style.display = 'inline';
+                document.getElementById('app').style.display = 'block';
+                loadData();
             }
         };
 
-        function handleAuthCallback() {
-            auth0Client.parseHash((err, authResult) => {
-                if (authResult?.idToken) {
-                    localStorage.setItem('id_token', authResult.idToken);
-                    window.location.href = '/';
-                } else if (err) {
-                    console.error('Auth error:', err);
-                    window.location.href = '/';
-                }
-            });
+        // Handle Auth0 callback
+        auth0Client.parseHash((err, authResult) => {
+            if (authResult && authResult.idToken) {
+                localStorage.setItem('id_token', authResult.idToken); // Store token
+                window.location.href = '/';
+            } else if (err) {
+                console.error('Error during authentication:', err);
+            }
+        });
+
+        // Load tasks and notes
+        async function loadData() {
+            const token = localStorage.getItem('id_token'); // Retrieve token
+            try {
+                const tasks = await axios.get('/.netlify/functions/tasks', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const notes = await axios.get('/.netlify/functions/notes', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+
+                document.getElementById('tasks').innerHTML = tasks.data
+                    .map(task => `<div>${task.content} <button onclick="deleteTask('${task._id}')">Delete</button></div>`)
+                    .join('');
+
+                document.getElementById('notes').innerHTML = notes.data
+                    .map(note => `<div>${note.content} <button onclick="deleteNote('${note._id}')">Delete</button></div>`)
+                    .join('');
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
         }
 
-        function showAuthenticatedUI() {
-            document.getElementById('login').classList.add('hidden');
-            document.getElementById('logout').classList.remove('hidden');
-            document.getElementById('app').classList.remove('hidden');
-            fetchTasks();
-            fetchNotes();
-        }
-
-        // Task functions
+        // Add task
         async function addTask() {
-            const token = localStorage.getItem('id_token');
-            const taskInput = document.getElementById('taskInput');
-            if (!taskInput.value.trim()) return;
-
+            const token = localStorage.getItem('id_token'); // Retrieve token
+            const input = document.getElementById('taskInput');
             try {
                 await axios.post('/.netlify/functions/tasks', 
-                    { task: taskInput.value },
+                    { task: input.value },
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
-                taskInput.value = '';
-                await fetchTasks();
+                input.value = '';
+                loadData();
             } catch (error) {
-                showToast(error.response?.data?.error || 'Failed to add task', 'error');
+                console.error('Error:', error);
             }
         }
 
-        async function fetchTasks() {
-            const token = localStorage.getItem('id_token');
-            try {
-                const response = await axios.get('/.netlify/functions/tasks', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                renderTasks(response.data);
-            } catch (error) {
-                if (error.response?.status === 401) logout();
-            }
-        }
-
-        function renderTasks(tasks) {
-            const taskList = document.getElementById('taskList');
-            taskList.innerHTML = tasks.map(task => `
-                <div class="task-item">
-                    <span>${task.content}</span>
-                    <div class="task-meta">
-                        <button class="delete-btn" onclick="deleteTask('${task._id}')">×</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        async function deleteTask(taskId) {
-            const token = localStorage.getItem('id_token');
-            try {
-                await axios.delete(`/.netlify/functions/tasks/${taskId}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                await fetchTasks();
-            } catch (error) {
-                showToast('Failed to delete task', 'error');
-            }
-        }
-
-        // Note functions
-        async function saveNote() {
-            const token = localStorage.getItem('id_token');
-            const noteInput = document.getElementById('noteInput');
-            if (!noteInput.value.trim()) return;
-
+        // Add note
+        async function addNote() {
+            const token = localStorage.getItem('id_token'); // Retrieve token
+            const input = document.getElementById('noteInput');
             try {
                 await axios.post('/.netlify/functions/notes', 
-                    { note: noteInput.value },
+                    { note: input.value },
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
-                noteInput.value = '';
-                await fetchNotes();
+                input.value = '';
+                loadData();
             } catch (error) {
-                showToast(error.response?.data?.error || 'Failed to save note', 'error');
+                console.error('Error:', error);
             }
         }
 
-        async function fetchNotes() {
-            const token = localStorage.getItem('id_token');
+        // Delete task
+        async function deleteTask(id) {
+            const token = localStorage.getItem('id_token'); // Retrieve token
             try {
-                const response = await axios.get('/.netlify/functions/notes', {
+                await axios.delete(`/.netlify/functions/tasks/${id}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                renderNotes(response.data);
+                loadData();
             } catch (error) {
-                if (error.response?.status === 401) logout();
+                console.error('Error:', error);
             }
         }
 
-        function renderNotes(notes) {
-            const noteDisplay = document.getElementById('noteDisplay');
-            noteDisplay.innerHTML = notes.map(note => `
-                <div class="note-item">
-                    <div>${note.content}</div>
-                    <div class="note-meta">
-                        <button class="delete-btn" onclick="deleteNote('${note._id}')">×</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        async function deleteNote(noteId) {
-            const token = localStorage.getItem('id_token');
+        // Delete note
+        async function deleteNote(id) {
+            const token = localStorage.getItem('id_token'); // Retrieve token
             try {
-                await axios.delete(`/.netlify/functions/notes/${noteId}`, {
+                await axios.delete(`/.netlify/functions/notes/${id}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                await fetchNotes();
+                loadData();
             } catch (error) {
-                showToast('Failed to delete note', 'error');
+                console.error('Error:', error);
             }
-        }
-
-        // Utilities
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = `toast ${type} visible`;
-            setTimeout(() => toast.classList.remove('visible'), 3000);
-        }
-
-        function logout() {
-            localStorage.removeItem('id_token');
-            window.location.reload();
         }
     </script>
 </body>
