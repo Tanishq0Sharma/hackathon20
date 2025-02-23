@@ -54,8 +54,16 @@
             font-size: 6rem;
             font-weight: bold;
             color: var(--primary);
-            margin-bottom: 2rem;
+            margin-bottom: 0.5rem;
             text-align: center;
+        }
+
+        #subtitle {
+            font-size: 1.8rem;
+            font-weight: 400;
+            color: var(--accent);
+            text-align: center;
+            margin-top: 0.5rem;
         }
 
         button {
@@ -229,6 +237,7 @@
     <div class="container">
         <div class="auth-buttons">
             <h1 id="title">Made by The Cooked Team</h1>
+            <h2 id="subtitle">Share your Tasks and Notes With Everyone!</h2> <!-- Subtitle added here -->
             <button id="login">Login</button>
             <button id="logout" class="hidden">Logout</button>
         </div>
@@ -402,8 +411,7 @@
                     const noteItem = document.createElement('div');
                     noteItem.className = 'note-item';
                     noteItem.innerHTML = `<span>${note.note}</span>`;
-                    
-                    // Add click event listener to delete note
+
                     noteItem.onclick = () => deleteNote(note._id);
 
                     noteDisplay.appendChild(noteItem);
